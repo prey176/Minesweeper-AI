@@ -216,7 +216,6 @@ class MinesweeperAI():
                     neighbors.add ((i,j))
             return neighbors
 
-
         # New sentence generation due to the new information of the cell
         neighbors = get_nearby_cells (cell)
         new_sentence = Sentence (neighbors,count)
@@ -243,12 +242,16 @@ class MinesweeperAI():
                 new_safes = set ()
                 new_mines = set ()
                 for sentence in self.knowledge :
+                    # add update the new safes if can be predicted from the sentence
                     new_safes = new_safes.union (sentence.known_safes ())
+                    # add update the new mines if can be predicted from the sentence
                     new_mines = new_mines.union (sentence.known_mines ())
+                # add them to safes and mines
                 for safe in new_safes :
                     self.mark_safe (safe)
                 for mine in new_mines :
                     self.mark_mine (mine)
+                # removing the sentences which cannot provide any more knowledge
                 self.knowledge = [x for x in self.knowledge if len (x.cells) > 0]
                 if len (new_safes) == 0 and len (new_mines) == 0 :
                     return update
@@ -262,18 +265,6 @@ class MinesweeperAI():
             """
             generated = False
             new_inferences = []
-            def duplicate_inference (inference) :
-                """
-                Checks whether the deduced inference is  
-                present in already existing knowledge
-                """
-                for existing_inference in new_inferences :
-                    if inference == existing_inference :
-                        return False
-                for sentence in self.knowledge :
-                    if sentence == inference :
-                        return False
-                return True
             while True :
                 for sentence1 in self.knowledge :
                     for sentence2 in self.knowledge :
@@ -282,9 +273,13 @@ class MinesweeperAI():
                             continue
                         # given sentence 1, can sentence 2 help infer anything 
                         inference = sentence1.get_inference (sentence2)
+                        if inference is None :
+                            continue
+                        if inference in new_inferences or inference in self.knowledge:
+                            continue
                         # updates knowledge if helpful and not duplicate 
-                        if inference is not None and not duplicate_inference (inference):
-                            new_inferences.append (inference)
+                        new_inferences.append (inference)
+                # add new knowledge to the knowledge base 
                 for inference in new_inferences :
                     self.knowledge.append(inference)
                 # if there are no new updates in the knowledge then exit
@@ -301,6 +296,13 @@ class MinesweeperAI():
             # add new inferences with due to change in knowledge
             okay2 = generate_inferences ()
             tocontinue = okay1 | okay2
+
+        # remove duplicates that are present in the knowledge base
+        new_inferences = []
+        for sentence in self.knowledge :
+            if sentence not in new_inferences :
+                new_inferences.append (sentence)
+        self.knowledge = new_inferences
 
     def make_safe_move(self):
         """
