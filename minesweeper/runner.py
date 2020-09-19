@@ -15,6 +15,10 @@ WHITE = (255, 255, 255)
 
 # Create game
 pygame.init()
+
+pygame.display.set_caption('Minesweeper with AI Assistance')
+
+
 size = width, height = 600, 400
 screen = pygame.display.set_mode(size)
 
@@ -46,7 +50,12 @@ revealed = set()
 flags = set()
 lost = False
 
+winning = pygame.mixer.Sound ('winning.wav')
+
+startWinning = False
+
 # Show instructions initially
+
 instructions = True
 
 while True:
@@ -93,6 +102,9 @@ while True:
             mouse = pygame.mouse.get_pos()
             if buttonRect.collidepoint(mouse):
                 instructions = False
+                pygame.mixer.music.stop()
+                music = pygame.mixer.music.load('music.wav')
+                pygame.mixer.music.play(-1)
                 time.sleep(0.3)
 
         pygame.display.flip()
@@ -152,12 +164,28 @@ while True:
     pygame.draw.rect(screen, WHITE, resetButton)
     screen.blit(buttonText, buttonRect)
 
+    backButton = pygame.Rect(
+        (2 / 3) * width + BOARD_PADDING, (1 / 3) * height + 90,
+        (width / 3) - BOARD_PADDING * 2, 50
+    )
+    buttonText = mediumFont.render("Back", True, BLACK)
+    buttonRect = buttonText.get_rect()
+    buttonRect.center = backButton.center
+    pygame.draw.rect(screen, WHITE, backButton)
+    screen.blit(buttonText, buttonRect)
+
+
     # Display text
     text = "Lost" if lost else "Won" if game.mines == flags else ""
     text = mediumFont.render(text, True, WHITE)
     textRect = text.get_rect()
-    textRect.center = ((5 / 6) * width, (2 / 3) * height)
+    textRect.center = ((5 / 6) * width, (2 / 3) * height + 50)
     screen.blit(text, textRect)
+
+    if not lost and game.mines == flags and not startWinning:
+        pygame.mixer.music.stop()
+        pygame.mixer.Sound.play(winning)
+        startWinning = True
 
     move = None
 
@@ -194,12 +222,24 @@ while True:
 
         # Reset game state
         elif resetButton.collidepoint(mouse):
+            pygame.mixer.music.play(-1)
             game = Minesweeper(height=HEIGHT, width=WIDTH, mines=MINES)
             ai = MinesweeperAI(height=HEIGHT, width=WIDTH)
             revealed = set()
             flags = set()
             lost = False
+            startWinning = False
             continue
+
+        elif backButton.collidepoint(mouse) :
+            pygame.mixer.music.stop()
+            game = Minesweeper(height=HEIGHT, width=WIDTH, mines=MINES)
+            ai = MinesweeperAI(height=HEIGHT, width=WIDTH)
+            revealed = set()
+            flags = set()
+            lost = False
+            startWinning = False
+            instructions = True
 
         # User-made move
         elif not lost:
@@ -213,6 +253,10 @@ while True:
     # Make move and update AI knowledge
     if move:
         if game.is_mine(move):
+            pygame.mixer.music.stop()
+            crash = pygame.mixer.Sound ('Crash.wav')
+            pygame.mixer.Sound.play(crash)
+            startWinning = False
             lost = True
         else:
             nearby = game.nearby_mines(move)
